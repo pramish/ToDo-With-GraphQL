@@ -3,11 +3,16 @@ const graphqlHTTP = require('express-graphql')
 const { buildSchema } = require('graphql')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
+const cors = require('cors')
 const app = express();
+
+
+const PORT = process.env.PORT || 5000
 
 const ToDo = require('./Model/ToDo')
 
 app.use(bodyParser.json())
+app.use(cors())
 
 app.use(
   '/graphql', // When we enter this route, we will get the GraphQL playground and we can test the GraphQL data.
@@ -101,7 +106,7 @@ mongoose
     }
   )
   .then(() => {
-    app.listen(3000, () => {
+    app.listen(PORT, () => {
       console.log('Server is running and Database is also connected');
     });
   });
