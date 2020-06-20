@@ -4,7 +4,6 @@ const { buildSchema } = require('graphql')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const app = express();
-const Void = require('./scalar-void')
 
 const ToDo = require('./Model/ToDo')
 
@@ -12,9 +11,9 @@ app.use(bodyParser.json())
 
 app.use(
   '/graphql', // When we enter this route, we will get the GraphQL playground and we can test the GraphQL data.
-  graphqlHTTP({
-    //This is the same as Route in NodeJS.
-    schema: buildSchema(` 
+    graphqlHTTP({
+        //This is the same as Route in NodeJS.
+        schema: buildSchema(` 
     
       type ToDo{
         _id: ID!
@@ -26,11 +25,16 @@ app.use(
       input ToDoInput{
         title: String!
         description: String!
-        status: String!
+        status: String
       }
 
       input DeleteToDo{
-          id: ID!
+          _id: ID!
+      }
+
+      input UpdateToDo{
+          _id: ID!
+          status: String!
       }
 
     type RootQuery{
@@ -39,41 +43,50 @@ app.use(
     type RootMutation{
           createToDo(name: ToDoInput): ToDo
           deleteToDo(id: DeleteToDo): ToDo
+          updateToDo(id: UpdateToDo): ToDo
         }
     schema{
         query: RootQuery
         mutation: RootMutation
       }
     `),
-    //This the same as the controllers for NodeJS.
-    rootValue: {
-      todos: async () => {
-        const todo = await ToDo.find();
-        if (todo) {
-          return todo;
+        //This the same as the controllers for NodeJS.
+        rootValue: {
+            todos: async () => {
+                const todo = await ToDo.find();
+                if (todo) {
+                    return todo;
+                }
+            },
+            createToDo: (args) => {
+                const todo = new ToDo({
+                    title: args.name.title,
+                    description: args.name.description,
+                    status: args.name.status,
+                });
+                return todo
+                    .save()
+                    .then((todo) => {
+                        return { ...todo._doc };
+                    })
+                    .catch((err) => {
+                        console.log("Sorry! Couldn't save the ToDo");
+                    });
+            },
+            deleteToDo: async (args) => {
+                const todo = await ToDo.findByIdAndDelete({ _id: args.id._id })
+                if (todo) {
+                    console.log("Deleted Successfully");
+                }
+            },
+            updateToDo: async (args) => {
+                const id = {_id:args.id._id}
+                const status = { status: args.id.status }
+                return ToDo.findOneAndUpdate(id, status,{new:true}).then(doc => {
+                    console.log(doc);
+                    return doc
+                })
         }
-      },
-      createToDo: (args) => {
-        const todo = new ToDo({
-          title: args.name.title,
-          description: args.name.description,
-          status: args.name.status,
-        });
-        return todo
-          .save()
-          .then((todo) => {
-            return { ...todo._doc };
-          })
-          .catch((err) => {
-            console.log("Sorry! Couldn't save the ToDo");
-          });
-      },
-        deleteToDo: async (args) => {
-            const todo = await ToDo.findByIdAndRemove({ _id: args.id.id })
-            if (todo) {
-                console.log("Deleted Successfully");
-            }
-      }
     },
     graphiql: true,
   })
